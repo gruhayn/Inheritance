@@ -20,6 +20,119 @@ private:
 	std::mt19937 rng = std::mt19937( std::random_device{}() );
 };
 
+class MemeFighter
+{
+
+public:
+	
+	std::string GetName() const
+	{
+		return name;
+	}
+
+	bool IsAlive() const {
+		return hp > 0;
+	}
+
+	int GetInitiative() {
+		return speed + d.Roll(2);
+	}
+
+	void Punch(MemeFighter& other) const {
+		if (IsAlive()) {
+			other.hp -= power + d.Roll(2);
+		}
+	}
+
+	virtual void Tick() {
+		if (IsAlive()) {
+			hp += d.Roll(6);
+		}
+	}
+
+	virtual void SpecialMove(MemeFighter&) {}
+
+protected:
+	MemeFighter(std::string name, int hp, int speed, int power)
+		:
+		name(name),
+		hp(hp),
+		speed(speed),
+		power(power)
+	{}
+
+	int Roll(int nDice = 1) {
+		return d.Roll(nDice);
+	}
+
+	void SetDamage(MemeFighter other, int damage) const {
+		other.hp -= damage;
+	}
+
+	
+
+protected:
+	std::string name;
+	int hp;
+	int speed;
+	int power;
+
+private:
+	mutable Dice d;
+
+};
+
+class MemeFrog : public MemeFighter
+{
+public:
+
+	MemeFrog(std::string name)
+		:
+		MemeFighter(name, 69, 7, 14)
+	{}
+
+	void SpecialMove(MemeFighter& other) override
+	{
+		if (Roll() > 4) 
+		{
+			SetDamage(other, Roll(3) + 20);
+		}
+
+	}
+
+	void Tick() override 
+	{
+		if (IsAlive()) {
+			SetDamage(*this, Roll());
+			MemeFighter::Tick();
+		}
+	}
+
+};
+
+
+class MemeStoner : public MemeFighter
+{
+public:
+	MemeStoner(std::string name)
+		:
+		MemeFighter(name, 80, 4, 10)
+	{}
+
+	void SpecialMove(MemeFighter&) override
+	{
+		if (Roll() > 3)
+		{
+			speed += 3;
+			power *= 69 / 42;
+			hp = hp + 10;
+		}
+
+	}
+
+};
+
+
 void Engage( MemeFighter& f1,MemeFighter& f2 )
 {
 	// pointers for sorting purposes
@@ -35,6 +148,22 @@ void Engage( MemeFighter& f1,MemeFighter& f2 )
 	p2->Punch( *p1 );
 }
 
+void DoSpecials(MemeFighter & m1, MemeFighter& m2) 
+{
+	auto* f1 = &m1;
+	auto* f2 = &m2;
+
+	if (f1->GetInitiative() < f2->GetInitiative()) 
+	{
+		std::swap(f1, f2);
+	}
+
+	// execute attacks
+	f1->SpecialMove(*f2);
+	f2->SpecialMove(*f1);
+
+}
+
 int main()
 {
 	MemeFrog f1( "Dat Boi" );
@@ -45,8 +174,7 @@ int main()
 		// trade blows
 		Engage( f1,f2 );
 		// special moves
-		f2.SpecialMove();
-		f1.SpecialMove( f2 );
+		DoSpecials(f1, f2);
 		// end of turn maintainence
 		f1.Tick();
 		f2.Tick();
